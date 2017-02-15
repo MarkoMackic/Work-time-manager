@@ -1,3 +1,6 @@
+import datetime
+
+
 def log(level, message, file_name=None):
     """Log messages to stdout or file
     TODO : Add file support
@@ -14,3 +17,9 @@ def log(level, message, file_name=None):
         print(message)
     else:
         pass
+
+
+def chop_microseconds(delta):
+    return delta - datetime.timedelta(
+        microseconds=delta.microseconds
+    )
