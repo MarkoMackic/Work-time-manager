@@ -11,6 +11,7 @@ prompt = "--> "
 sessions_storage = "session_files/{filename}"
 datetime_format = "%d/%m/%Y %H:%M:%S"
 date_format = "%d/%m/%Y"
+time_format = "%H:%M:%S"
 
 
 class Session(object):
@@ -38,8 +39,10 @@ class Session(object):
         self.session_manager = session_manager
         # if supplied check parameter integrity
         if startTime is not None and endTime is not None:
-            self.start_time = datetime.strptime(startTime, datetime_format)
-            self.end_time = datetime.strptime(endTime, datetime_format)
+            self.start_time = datetime.strptime(startTime.replace("-", " "),
+                                                datetime_format)
+            self.end_time = datetime.strptime(endTime.replace("-", " "),
+                                              datetime_format)
 
     def is_finished(self):
         """Check if this session is ended"""
@@ -104,6 +107,16 @@ class Session(object):
             start_time=self.start_time.strftime(datetime_format),
             end_time=self.end_time.strftime(datetime_format)
         )
+
+    def timerange(self):
+        next_day = ""
+        if self.end_time.day > self.start_time.day:
+            next_day = "Next day : " # noqa
+
+        return "%s - %s%s" % (self.start_time.strftime(time_format),
+                              next_day,
+                              self.end_time.strftime(time_format)
+                              )
 
     def serialize(self):
         """Serializer of the class
@@ -240,6 +253,64 @@ class SessionManager(object):
         else:
             return self.calc_all(per_hour)
 
+    def ps_range(self, d1, d2):
+        for date, sessions in self.sessions.items():
+            if (datetime.strptime(date, date_format) > d1 and
+                    datetime.strptime(date, date_format) < d2):
+                print("Date: %s" % date)
+                for session in sessions:
+                    print(" |---%s" % session.timerange())
+
+    def ps_one(self, date):
+        date_str = datetime.strftime(date, date_format)
+        if date_str in self.sessions:
+            print("Date: %s" % date_str)
+            for session in self.sessions[date_str]:
+                print(" |---%s" % session.timerange())
+        else:
+            print("No sessions are registered at that date")
+
+    def ps_all(self):
+        for date, sessions in self.sessions.items():
+            print("Date: %s" % date)
+            for session in sessions:
+                print(" |---%s" % session.timerange())
+
+    def print_sessions(self, date1=None, date2=None):
+        if date1 is not None and date2 is not None:
+            d1 = datetime.strptime(date1, date_format)
+            d2 = datetime.strptime(date2, date_format)
+            self.ps_range(d1, d2)
+        elif date1 is not None and date2 is None:
+            d1 = datetime.strptime(date1, date_format)
+            self.ps_one(d1)
+        else:
+            self.ps_all()
+
+    def clear_sessions(self):
+        self.sessions.clear()
+
+    def add_session(self, startTime=None, endTime=None):
+        if startTime is not None and endTime is not None:
+            session = Session(self, startTime, endTime)
+            date = session.date()
+            if date not in self.sessions:
+                self.sessions[date] = [session]
+                print("Session added successfully!")
+            else:
+                contains = False
+                for ses in self.sessions[date]:
+                    if ses.start_time == session.start_time:
+                        contains = True
+                if not contains:
+                    self.sessions[date].append(session)
+                    print("Session added successfully!")
+                else:
+                    print("Session with same start time already exists!")
+
+        else:
+            print("Please specify start and end time")
+
     def serialize(self):
         """Serializer of the class"""
         return {date: [session.serialize() for session in lst] for
@@ -340,6 +411,19 @@ class WorkManager(object):
         """Save working state"""
         self.save()
 
+    def cmd_change_h_price(self, arguments):
+        try:
+            cijena = float(arguments[0])
+            self.hourly_price = cijena
+            print("Hourly price changed to %s %s" %
+                  (self.hourly_price, self.currency)
+                  )
+        except:
+            print("Price must be int of floating point number")
+
+    def cmd_print_sessions(self, arguments):
+        self.session_manager.print_sessions(*arguments)
+
     def cmd_start(self, arguments):
         """Start a new session"""
         self.session_manager.start_session()
@@ -377,6 +461,15 @@ class WorkManager(object):
                   amount=round(result[1], 2),
                   currency=self.currency
               ))
+
+    def cmd_add_session(self, arguments):
+
+        self.session_manager.add_session(
+            *arguments
+        )
+
+    def cmd_clear_sessions(self, arguments):
+        self.session_manager.clear_sessions()
 
     def cmd_ims(self, arguments):
         for date, session in self.session_manager.sessions.items():
