@@ -9,6 +9,10 @@ import os
 
 prompt = "--> "
 sessions_storage = "session_files/{filename}"
+"""
+Do ne
+
+"""
 datetime_format = "%d/%m/%Y %H:%M:%S"
 date_format = "%d/%m/%Y"
 time_format = "%H:%M:%S"
@@ -17,18 +21,21 @@ time_format = "%H:%M:%S"
 class Session(object):
     """Manages a single work session"""
 
-    def __init__(self, session_manager, startTime=None, endTime=None):
+    def __init__(self, session_manager, startTime=None, endTime=None,
+                 paid=None):
         """Initialize a singe session
 
         Params:
             startTime -> string -> This is string in format datetime_format
             endTime -> string -> This is string in format datetime_format
+            paid -> string -> This is true/false
             session_manager -> SessionManager -> This is sessaion manager
             for session
 
         Internals:
             start_time -> datetime
             end_time -> datetime
+            paid -> boolean
             session_manager -> SessionManager
 
         This function initializes session. It can be unstarted session,
@@ -43,6 +50,10 @@ class Session(object):
                                                 datetime_format)
             self.end_time = datetime.strptime(endTime.replace("-", " "),
                                               datetime_format)
+        self.paid = False
+        if paid is not None:
+            if paid == "true":
+                self.paid = True
 
     def is_finished(self):
         """Check if this session is ended"""
@@ -74,12 +85,15 @@ class Session(object):
 
     def total_time(self):
         """Return timedelta between beginning and end"""
-        if self.is_finished() and self.is_started():
-            if self.end_time < self.start_time:
-                raise Exception("End time must be after start time")
-            return self.end_time - self.start_time
+        if self.is_started():
+            if self.is_finished():
+                if self.end_time < self.start_time:
+                    raise Exception("End time must be after start time")
+                return self.end_time - self.start_time
+            else:
+                return self.current_time()
         else:
-            helper_methods.log(2, "This session is unfinished !")
+            raise Exception("This session is unstarted !")
 
     def current_time(self):
         """Return time difference from now to start of session"""
@@ -103,20 +117,29 @@ class Session(object):
 
     def __str__(self):
         """String reperesentation of session object"""
+        if self.end_time is None:
+            endTime = "Unfinished"
+        else:
+            endTime = self.end_time.strftime(datetime_format)
+
         return "Session(START: {start_time}, END: {end_time})".format(
             start_time=self.start_time.strftime(datetime_format),
-            end_time=self.end_time.strftime(datetime_format)
+            end_time=endTime
+
         )
 
     def timerange(self):
-        next_day = ""
-        if self.end_time.day > self.start_time.day:
-            next_day = "Next day : " # noqa
+        if self.is_finished():
+            next_day = ""
+            if self.end_time.day > self.start_time.day:
+                next_day = "Next day : "  # noqa
 
-        return "%s - %s%s" % (self.start_time.strftime(time_format),
-                              next_day,
-                              self.end_time.strftime(time_format)
-                              )
+            return "%s - %s%s" % (self.start_time.strftime(time_format),
+                                  next_day,
+                                  self.end_time.strftime(time_format)
+                                  )
+        else:
+            return "Unfinished session"
 
     def serialize(self):
         """Serializer of the class
@@ -128,7 +151,8 @@ class Session(object):
 
         return {
             "start_time": self.start_time.strftime(datetime_format),
-            "end_time": self.end_time.strftime(datetime_format)
+            "end_time": self.end_time.strftime(datetime_format),
+            "paid": str(self.paid).lower()
         }
 
     def deserialize(self, dct):
@@ -139,6 +163,7 @@ class Session(object):
         """
         self.start_time = datetime.strptime(dct['start_time'], datetime_format)
         self.end_time = datetime.strptime(dct['end_time'], datetime_format)
+        self.paid = True if dct['paid'] == "true" else False
         return self
 
 
@@ -202,8 +227,9 @@ class SessionManager(object):
             if (datetime.strptime(date, date_format) > d1 and
                     datetime.strptime(date, date_format) < d2):
                 for session in sessions:
-                    total_hours += session.total_hours()
-                    final_price += session.total_hours() * per_hour
+                    if session.paid is False:
+                        total_hours += session.total_hours()
+                        final_price += session.total_hours() * per_hour
 
         return (total_hours, final_price)
 
@@ -213,8 +239,9 @@ class SessionManager(object):
         total_hours = 0.0
         for date, sessions in self.sessions.items():
             for session in sessions:
-                total_hours += session.total_hours()
-                final_price += session.total_hours() * per_hour
+                if session.paid is False:
+                    total_hours += session.total_hours()
+                    final_price += session.total_hours() * per_hour
 
         return (total_hours, final_price)
 
@@ -225,8 +252,9 @@ class SessionManager(object):
         total_price = 0
         if date_str in self.sessions:
             for session in self.sessions[date_str]:
-                total_hours += session.total_hours()
-                total_price += session.total_hours() * per_hour
+                if session.paid is False:
+                    total_hours += session.total_hours()
+                    total_price += session.total_hours() * per_hour
 
             return (total_hours, total_price)
         else:
@@ -259,14 +287,20 @@ class SessionManager(object):
                     datetime.strptime(date, date_format) < d2):
                 print("Date: %s" % date)
                 for session in sessions:
-                    print(" |---%s" % session.timerange())
+                    print(" |---%s , %s" % (
+                        session.timerange(),
+                        "Paid" if session.paid else "Unpaid"
+                    ))
 
     def ps_one(self, date):
         date_str = datetime.strftime(date, date_format)
         if date_str in self.sessions:
             print("Date: %s" % date_str)
             for session in self.sessions[date_str]:
-                print(" |---%s" % session.timerange())
+                print(" |---%s , %s" % (
+                    session.timerange(),
+                    "Paid" if session.paid else "Unpaid"
+                ))
         else:
             print("No sessions are registered at that date")
 
@@ -274,7 +308,10 @@ class SessionManager(object):
         for date, sessions in self.sessions.items():
             print("Date: %s" % date)
             for session in sessions:
-                print(" |---%s" % session.timerange())
+                print(" |---%s , %s" % (
+                    session.timerange(),
+                    "Paid" if session.paid else "Unpaid"
+                ))
 
     def print_sessions(self, date1=None, date2=None):
         if date1 is not None and date2 is not None:
@@ -287,12 +324,54 @@ class SessionManager(object):
         else:
             self.ps_all()
 
-    def clear_sessions(self):
-        self.sessions.clear()
+    def mp_range(self, d1, d2, paid):
+        for date, sessions in self.sessions.items():
+            if (datetime.strptime(date, date_format) > d1 and
+                    datetime.strptime(date, date_format) < d2):
+                for session in sessions:
+                    session.paid = paid
+        print("Sessions marked as %s" % ("paid" if paid else "unpaid"))
 
-    def add_session(self, startTime=None, endTime=None):
-        if startTime is not None and endTime is not None:
-            session = Session(self, startTime, endTime)
+    def mp_one(self, date, paid):
+        date_str = datetime.strftime(date, date_format)
+        if date_str in self.sessions:
+            for session in self.sessions[date_str]:
+                session.paid = paid
+            print("Sessions marked as %s" % ("paid" if paid else "unpaid"))
+        else:
+            print("No sessions are registered at that date")
+
+    def mp_all(self, paid):
+        for date, sessions in self.sessions.items():
+            for session in sessions:
+                session.paid = paid
+        print("Sessions marked as %s" % ("paid" if paid else "unpaid"))
+
+    def mark_paid(self, date1=None, date2=None):
+        if date1 is not None and date2 is not None:
+            d1 = datetime.strptime(date1, date_format)
+            d2 = datetime.strptime(date2, date_format)
+            self.mp_range(d1, d2, True)
+        elif date1 is not None and date2 is None:
+            d1 = datetime.strptime(date1, date_format)
+            self.mp_one(d1, True)
+        else:
+            self.mp_all(True)
+
+    def mark_unpaid(self, date1=None, date2=None):
+        if date1 is not None and date2 is not None:
+            d1 = datetime.strptime(date1, date_format)
+            d2 = datetime.strptime(date2, date_format)
+            self.mp_range(d1, d2, False)
+        elif date1 is not None and date2 is None:
+            d1 = datetime.strptime(date1, date_format)
+            self.mp_one(d1, False)
+        else:
+            self.mp_all(False)
+
+    def add_session(self, startTime=None, endTime=None, paid=None):
+        if startTime is not None and endTime is not None and paid is not None:
+            session = Session(self, startTime, endTime, paid)
             date = session.date()
             if date not in self.sessions:
                 self.sessions[date] = [session]
@@ -310,6 +389,22 @@ class SessionManager(object):
 
         else:
             print("Please specify start and end time")
+
+    def remove_sessions(self, date):
+        if date in self.sessions:
+            mapper = {}
+            print("Here are sessions for this date:")
+            for i in range(0, len(self.sessions[date])):
+                session = self.sessions[date][i]
+                print(" " * 4 + str(i) + " -> " + session.timerange())
+                mapper[i] = self.sessions[date][i]
+            print("Enter , separated numbers of sessions")
+            delete = [int(a.strip()) for a in input(prompt).split(',')]
+            for d in delete:
+                if d in mapper:
+                    self.sessions[date].remove(mapper[d])
+            if len(self.sessions[date]) == 0:
+                del self.sessions[date]
 
     def serialize(self):
         """Serializer of the class"""
@@ -468,8 +563,16 @@ class WorkManager(object):
             *arguments
         )
 
-    def cmd_clear_sessions(self, arguments):
-        self.session_manager.clear_sessions()
+    def cmd_remove_sessions(self, arguments):
+        self.session_manager.remove_sessions(
+            *arguments
+        )
+
+    def cmd_mark_paid(self, arguments):
+        self.session_manager.mark_paid(*arguments)
+
+    def cmd_mark_unpaid(self, arguments):
+        self.session_manager.mark_unpaid(*arguments)
 
     def cmd_ims(self, arguments):
         for date, session in self.session_manager.sessions.items():
@@ -486,7 +589,10 @@ def main():
         CP = CommandProcessor([WM])
         while 1:
             try:
-                CP.call(input(prompt))
+                cmd = input(prompt)
+                if cmd == "exit":
+                    raise KeyboardInterrupt()
+                CP.call(cmd)
             except KeyboardInterrupt:
                 print()
                 if WM.saved == 0:

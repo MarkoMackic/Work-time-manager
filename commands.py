@@ -30,12 +30,13 @@ class CommandProcessor(object):
             "ttime",
             "start",
             "change_h_price",
-            "clear_sessions",
+            "mark_paid",
+            "mark_unpaid",
             "add_session",
             "print_sessions",
+            "remove_sessions",
             "stop",
             "load",
-            "clear",
             "calc",
             "ims"
         ]
