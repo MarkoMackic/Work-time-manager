@@ -2,7 +2,7 @@
 
 ## Intro:
 
-I needed program to manage my work sessions for me, and calculate amount I earned, so I made my own. In commands section everything you can use will be describe. If you think there is a feature to add, open an issue describing the problem. Date, time and datetime formats are at beginning of program, so you can tweak them for your comfort. This program can be used by multiple users, and each user sessions are saved to file he created (it asks you at beginning of program for session file) and only he can access the file with his password.
+I needed program to manage my work sessions for me, and calculate amount I earned, so I made my own. In commands section everything you can use will be describe. If you think there is a feature to add, open an issue describing the problem. Date, time and datetime formats are at beginning of program, so you can tweak them for your comfort. This program can be used by multiple users, and each user sessions are saved to file he created (it asks you at beginning of program for session file) and only he can access the file with his password. Currently this works with python 3 only.
 
 ## Commands:
 
@@ -22,7 +22,7 @@ I needed program to manage my work sessions for me, and calculate amount I earne
   Prints the sessions.
   
   &nbsp; &nbsp; &nbsp;
-  date1, date2 - Optional parameters, if both are supplied, then the date range sessions are printed, if there is only date1 then a single date sessions are printed. If none of these are supplied it will print all of your sessions.
+  start_date, end_date - Optional parameters, if both are supplied, then the date range sessions are printed, if there is only date1 then a single date sessions are printed. If none of these are supplied it will print all of your sessions.
   
 * add_session {start_date}-{start_time} {end_date}-{end_time} paid
 
@@ -71,10 +71,3 @@ I needed program to manage my work sessions for me, and calculate amount I earne
 
     &nbsp; &nbsp; &nbsp;
     start_date, end_date - Optional parameters, if both are supplied, then the date range sessions are calculated, if there is only start_date then a single date sessions are calculated. If none of these are supplied it will calculate all your sessions.
-
- 
-
-    
-  
-  
-  
