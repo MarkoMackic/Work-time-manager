@@ -1,1 +1,3 @@
 session_files/
+__py_chache__/
+*.pyc
