@@ -1,6 +1,5 @@
 from datetime import datetime
-from crypto import Crypto
-from simplecrypt import DecryptionException
+from crypto import MyCrypto
 from commands import CommandProcessor
 import helper_methods
 import json
@@ -475,7 +474,7 @@ class WorkManager(object):
 
     def save(self):
         print(self.serialize())
-        Crypto.write_to_file(
+        MyCrypto.write_to_file(
             json.dumps(obj=self.serialize()),
             self.ses_file,
             self.password
@@ -483,13 +482,13 @@ class WorkManager(object):
 
     def load(self):
         try:
-            decrypted = Crypto.read_from_file(
+            decrypted = MyCrypto.read_from_file(
                 self.ses_file,
                 self.password
             )
             self.deserialize(json.loads(decrypted))
             helper_methods.log(3, "Loaded config from file")
-        except DecryptionException as e:  # noqa
+        except ValueError  as e:  # noqa
             self.password_tries -= 1
             if self.password_tries == 0:
                 exit("File you try to open is corrupt or password "
@@ -599,7 +598,8 @@ def main():
                     WM.save()
                 helper_methods.log(3, "\nBye bye")
                 break
-    except ValueError:
+    except ValueError as e:
+        print(e)
         print("Wrong input type.")
 
 

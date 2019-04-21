@@ -1,2 +1,2 @@
-simple-crypt==4.1.7
+pycryptodome==3.8.1
 
